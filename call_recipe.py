@@ -7,19 +7,6 @@ from PIL import Image
 from io import BytesIO
 from PIL import ImageDraw, ImageFont
 
-
-def get_random_items(filename, num_items):
-    # Read the CSV file into a DataFrame
-    df = pd.read_csv(filename)
-
-    # Get a list of items from the 'food' column
-    items = df['food'].tolist()
-
-    # Select a specified number of random items
-    random_items = random.sample(items, num_items)
-
-    return random_items
-
 def wrap_text(text, font, max_width):
     lines = []
     words = text.split(' ')
@@ -51,8 +38,14 @@ def get_items(filename):
 def get_recipe_text(filename):
     with open(filename, "r") as file:
         return file.read()
-
-def save_base64_image_to_png(base64_string, output_filename, items):
+    
+def create_stable_diffusion_prompt(items):
+    # Create a stable diffusion prompt using the items
+    prompt = f"Cooking {', '.join(items[:-1])}, and {items[-1]}."
+    
+    return prompt
+    
+def save_base64_image_to_png(base64_string, output_filename, recipe_text):
     # Decode the base64 string
     decoded_image = base64.b64decode(base64_string)
 
@@ -60,53 +53,25 @@ def save_base64_image_to_png(base64_string, output_filename, items):
     image_data = BytesIO(decoded_image)
     image = Image.open(image_data)
 
-    # Create a black background image
+    # Create a white background image
     bg_width, bg_height = image.size
-    background = Image.new("RGB", (bg_width * 2, bg_height), "black")
+    background = Image.new("RGB", (bg_width * 2, bg_height), "white")
 
     # Paste the original image onto the background
     background.paste(image, (0, 0))
 
-    # Add the items to the right side of the image
+    # Add the recipe text to the right side of the image
     draw = ImageDraw.Draw(background)
-    item_locations = []
-
-    for item in items:
-        font_size = random.randint(20, 60)
-        font = ImageFont.truetype("arial.ttf", font_size)
-        item_width, item_height = font.getsize(item)
-
-        # Find a suitable location for the text, avoiding overlaps and out of space
-        while True:
-            x = random.randint(bg_width + 10, bg_width * 2 - 20 - item_width)
-            y = random.randint(10, bg_height - 20 - item_height)
-            new_location = (x, y, x + item_width, y + item_height)
-
-            # Check for collision
-            collision = False
-            for loc in item_locations:
-                if (new_location[0] < loc[2] and new_location[2] > loc[0] and
-                        new_location[1] < loc[3] and new_location[3] > loc[1]):
-                    collision = True
-                    break
-
-            if not collision:
-                item_locations.append(new_location)
-                break
-
-        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
-        # Draw the item text
-        draw.text((x, y), item, font=font, fill=color)
+    font = ImageFont.truetype("arial.ttf", 8)
+    
+    # Wrap the recipe text to fit the width of the background
+    max_text_width = bg_width - 20
+    wrapped_text = wrap_text(recipe_text, font, max_text_width)
+    
+    draw.text((bg_width + 10, 10), wrapped_text, font=font, fill="black")
 
     # Save the new image as a PNG file
-    background.save(output_filename, 'PNG')
-    
-def create_stable_diffusion_prompt(items):
-    # Create a stable diffusion prompt using the items
-    prompt = f"Cooking {', '.join(items[:-1])}, and {items[-1]}."
-    
-    return prompt
+    background.save(output_filename, 'PNG')    
 
 def call_stable_diffusion_api(prompt):
     url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
@@ -155,9 +120,9 @@ def get_img(prompt):
 
 
 
+
 if __name__ == "__main__":
-    # Get 5 random items from missing.csv
-    items = get_random_items("missing.csv", 5)
+    items = get_items("recipe_ingredients.csv")
 
     prompt = create_stable_diffusion_prompt(items)
     print("Generated prompt:", prompt)
@@ -165,10 +130,9 @@ if __name__ == "__main__":
     result = get_img(prompt)
     output_filename = "output_image.png"
 
-    # Convert the list of items into a single string
-    items_text = "\n".join(items)
+    # Read the contents of the recipe.txt file
+    recipe_text = get_recipe_text("recipe.txt")
 
-    save_base64_image_to_png(result, output_filename, items)
+    save_base64_image_to_png(result, output_filename, recipe_text)
     if result is not None:
         print("Stable Diffusion API response:", result)
-

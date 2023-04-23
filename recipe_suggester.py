@@ -62,7 +62,9 @@ def get_recipe_suggestions(ingredients, api_key):
         raise Exception(f"API request failed with status code {response.status_code}")
 
         
-def pretty_print_recipe(recipe_details, missing_ingredients, used_ingredients):
+def pretty_print_recipe(recipe_details, missing_ingredients, used_ingredients): 
+    all_ingredients = missing_ingredients + used_ingredients
+    save_recipe_ingredients_to_csv(all_ingredients, "recipe_ingredients.csv")
     recipe_text = f"\nRecipe: {recipe_details['title']}\n"
     recipe_text += f"Servings: {recipe_details['servings']}\n"
     recipe_text += f"Ready in {recipe_details['readyInMinutes']} minutes\n"
@@ -87,6 +89,13 @@ def pretty_print_recipe(recipe_details, missing_ingredients, used_ingredients):
     print(recipe_text)
     return recipe_text
 
+def save_recipe_ingredients_to_csv(ingredients, filename="recipe_ingredients.csv"):
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        csv_writer = csv.writer(file)
+        csv_writer.writerow(["food"])  # Write the header
+        for ingredient in ingredients:
+            csv_writer.writerow([ingredient['name']])
+            
 def main():
     food_items = load_food_items_from_csv(CSV_FILENAME)
     recipe_suggestions = get_recipe_suggestions(food_items, API_KEY)
