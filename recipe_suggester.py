@@ -62,28 +62,30 @@ def get_recipe_suggestions(ingredients, api_key):
         raise Exception(f"API request failed with status code {response.status_code}")
 
         
-def pretty_print_recipe(recipe_details, missed_ingredients, used_ingredients):
-    print(f"\nRecipe: {recipe_details['title']}")
-    print(f"Servings: {recipe_details['servings']}")
-    print(f"Ready in {recipe_details['readyInMinutes']} minutes")
+def pretty_print_recipe(recipe_details, missing_ingredients, used_ingredients):
+    recipe_text = f"\nRecipe: {recipe_details['title']}\n"
+    recipe_text += f"Servings: {recipe_details['servings']}\n"
+    recipe_text += f"Ready in {recipe_details['readyInMinutes']} minutes\n"
 
-    print("\nMissing ingredients:")
-    for ingredient in missed_ingredients:
-        print(f"- {ingredient['name']}")
+    recipe_text += "\nMissing ingredients:\n"
+    for ingredient in missing_ingredients:
+        recipe_text += f"- {ingredient['name']}\n"
 
-    print("\nIngredients you have:")
+    recipe_text += "\nIngredients you have:\n"
     for ingredient in used_ingredients:
-        print(f"- {ingredient['name']}")
+        recipe_text += f"- {ingredient['name']}\n"
 
-    print("\nInstructions:")
+    recipe_text += "\nInstructions:\n"
     if 'analyzedInstructions' in recipe_details and len(recipe_details['analyzedInstructions']) > 0:
         for idx, step in enumerate(recipe_details['analyzedInstructions'][0]['steps']):
-            print(f"{idx + 1}. {step['step']}")
+            recipe_text += f"{idx + 1}. {step['step']}\n"
     else:
-        print("No detailed instructions available.")
+        recipe_text += "No detailed instructions available.\n"
 
-    print(f"\nFor more details, visit: {recipe_details['sourceUrl']}")
-
+    recipe_text += f"\nFor more details, visit: {recipe_details['sourceUrl']}\n"
+    
+    print(recipe_text)
+    return recipe_text
 
 def main():
     food_items = load_food_items_from_csv(CSV_FILENAME)
@@ -106,15 +108,27 @@ def main():
 
     if recipe_details is not None:
         print("\nHere are the details for the chosen recipe:")
-        pretty_print_recipe(recipe_details,
+        recipe_text = pretty_print_recipe(recipe_details,
                             recipe_suggestions[best_choice]['missedIngredients'],
                             recipe_suggestions[best_choice]['usedIngredients'])
         
         # Save the missing ingredients to the CSV file
         save_missing_ingredients_to_csv(recipe_suggestions[best_choice]['missedIngredients'])
+    while True:
+            user_input = input("\nPress 'q' to quit or 'p' to save the recipe to a file: ").lower()
 
+            if user_input == 'q':
+                break
+            elif user_input == 'p':
+                with open("recipe.txt", "w") as file:
+                    file.write(recipe_text)
+                print("Recipe saved to recipe.txt")
+                break
+            else:
+                print("Invalid input. Please enter 'q' or 'p'.")
     else:
         print("Could not retrieve recipe details.")
+    
 
 
     
