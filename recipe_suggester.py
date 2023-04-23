@@ -1,7 +1,12 @@
 import pandas as pd
 import requests
 
-API_KEY = "ee9dd159124549a18c96a93f4bd752fa"  # Replace with your Spoonacular API key
+def read_api_key_from_file(filename):
+    with open(filename, 'r') as file:
+        api_key = file.read().strip()
+    return api_key
+
+API_KEY = read_api_key_from_file("api_key.txt") #Put your API key in the api_key.txt file
 CSV_FILENAME = "food_items.csv"
 
 
