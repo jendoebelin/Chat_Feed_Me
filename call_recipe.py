@@ -14,7 +14,7 @@ def wrap_text(text, font, max_width):
 
     for word in words:
         temp_line = current_line + ' ' + word
-        temp_line_width, _ = font.getsize(temp_line.strip())
+        temp_line_width, _ = font.getbbox(temp_line.strip())[2:]
         if temp_line_width <= max_width:
             current_line = temp_line
         else:
@@ -53,25 +53,37 @@ def save_base64_image_to_png(base64_string, output_filename, recipe_text):
     image_data = BytesIO(decoded_image)
     image = Image.open(image_data)
 
-    # Create a white background image
-    bg_width, bg_height = image.size
-    background = Image.new("RGB", (bg_width * 2, bg_height), "white")
-
-    # Paste the original image onto the background
-    background.paste(image, (0, 0))
-
     # Add the recipe text to the right side of the image
-    draw = ImageDraw.Draw(background)
-    font = ImageFont.truetype("arial.ttf", 8)
+    font = ImageFont.truetype("arial.ttf", 14)
     
     # Wrap the recipe text to fit the width of the background
-    max_text_width = bg_width - 20
+    max_text_width = (image.width * 2) - 20
     wrapped_text = wrap_text(recipe_text, font, max_text_width)
-    
-    draw.text((bg_width + 10, 10), wrapped_text, font=font, fill="black")
+
+    # Calculate the required height based on the number of lines in the wrapped text
+    line_spacing = 2
+    required_height = (len(wrapped_text.split("\n")) + 1) * (font.getbbox("A")[3] + line_spacing)
+
+    # Create a white background image with the required height
+    bg_width, bg_height = image.size
+    background = Image.new("RGB", (bg_width * 3, max(required_height, bg_height)), "black")
+
+    # Calculate the vertical offset needed to center the image
+    image_vertical_offset = (background.height - image.height) // 2
+
+    # Paste the original image onto the background, with the vertical offset
+    background.paste(image, (0, image_vertical_offset))
+
+    draw = ImageDraw.Draw(background)
+
+    # Add line_spacing between lines
+    y_offset = 10
+    for line in wrapped_text.split("\n"):
+        draw.text((bg_width + 10, y_offset), line, font=font, fill="white")
+        y_offset += font.getbbox("A")[3] + line_spacing
 
     # Save the new image as a PNG file
-    background.save(output_filename, 'PNG')    
+    background.save(output_filename, 'PNG')
 
 def call_stable_diffusion_api(prompt):
     url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
@@ -128,11 +140,16 @@ if __name__ == "__main__":
     print("Generated prompt:", prompt)
 
     result = get_img(prompt)
-    output_filename = "output_image.png"
+    #output_filename = "output_image.png"
+    output_filename = prompt.replace(',', '').replace('.', '') + ".png"
 
     # Read the contents of the recipe.txt file
     recipe_text = get_recipe_text("recipe.txt")
 
     save_base64_image_to_png(result, output_filename, recipe_text)
-    if result is not None:
-        print("Stable Diffusion API response:", result)
+    #if result is not None:
+        #print("Stable Diffusion API response:", result)
+
+# Display the saved image
+    image = Image.open(output_filename)
+    image.show()

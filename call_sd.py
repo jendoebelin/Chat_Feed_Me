@@ -6,7 +6,7 @@ import base64
 from PIL import Image
 from io import BytesIO
 from PIL import ImageDraw, ImageFont
-
+import os
 
 def get_random_items(filename, num_items):
     # Read the CSV file into a DataFrame
@@ -74,11 +74,11 @@ def save_base64_image_to_png(base64_string, output_filename, items):
     for item in items:
         font_size = random.randint(20, 60)
         font = ImageFont.truetype("arial.ttf", font_size)
-        item_width, item_height = font.getsize(item)
+        item_width, item_height = font.getbbox(item)[2:]
 
         # Find a suitable location for the text, avoiding overlaps and out of space
         while True:
-            x = random.randint(bg_width + 10, bg_width * 2 - 20 - item_width)
+            x = random.randint(bg_width + 10, max(bg_width + 11, bg_width * 2 - 20 - item_width))
             y = random.randint(10, bg_height - 20 - item_height)
             new_location = (x, y, x + item_width, y + item_height)
 
@@ -131,7 +131,7 @@ def get_img(prompt):
         payload = json.dumps({
         "prompt": prompt,
         "steps": 25, 
-        "cfg_scale":7
+        "cfg_scale":9
         })
         headers = {
         'Content-Type': 'application/json'
@@ -156,19 +156,33 @@ def get_img(prompt):
 
 
 if __name__ == "__main__":
+    #items = ['eggs','flour','bread','milk','sugar','salt','pepper','cheese','lettuce','tomato']
     # Get 5 random items from missing.csv
-    items = get_random_items("missing.csv", 5)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    csv_file_path = os.path.join(script_dir, "missing.csv")
+    try:
+        items = get_random_items(csv_file_path, 10)
+    except Exception as e:
+        print(f"Error occurred while getting random items: {e}")
+        items = ['eggs','flour','bread','milk','sugar','salt','pepper','cheese','lettuce','tomato']  # Assign an empty list to items if an error occurs
 
+    #items = get_random_items(csv_file_path, 5)
+    #print(items)
     prompt = create_stable_diffusion_prompt(items)
     print("Generated prompt:", prompt)
 
     result = get_img(prompt)
-    output_filename = "output_image.png"
+    #output_filename = "output_image.png"
+    output_filename = prompt.replace(',', '').replace('.', '') + ".png"
 
+    
     # Convert the list of items into a single string
     items_text = "\n".join(items)
 
     save_base64_image_to_png(result, output_filename, items)
-    if result is not None:
-        print("Stable Diffusion API response:", result)
+    #if result is not None:
+     #   print("Stable Diffusion API response:", result)
 
+# Display the saved image
+    image = Image.open(output_filename)
+    image.show()
